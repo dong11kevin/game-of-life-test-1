@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Conway's Game of Life - Still Life Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #05070c;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+        /* Glassmorphism panels */
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        /* Neon glowing aesthetics */
+        .neon-glow-green {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+        .neon-text-green {
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+        }
+    </style>
+</head>
+<body class="h-full overflow-hidden text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-900">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="glass-panel border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4 z-10">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-500 flex items-center justify-center neon-glow-green animate-pulse">
+                <i class="fa-solid fa-microchip text-emerald-400 text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-wider text-white flex items-center gap-2">
+                    STILL LIFE <span class="text-emerald-400 font-extrabold neon-text-green">SANDBOX</span>
+                </h1>
+                <p class="text-xs text-slate-400">Infinite Conway's Game of Life • Diagonal repetition theory</p>
+            </div>
+        </div>
+
+        <!-- STATS & METRICS -->
+        <div class="flex items-center space-x-6">
+            <div class="flex flex-col items-end">
+                <span class="text-[10px] uppercase tracking-widest text-slate-400">Generation</span>
+                <span id="stat-gen" class="code-font text-xl font-bold text-emerald-400 neon-text-green">0</span>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div class="flex flex-col items-end">
+                <span class="text-[10px] uppercase tracking-widest text-slate-400">Live Population</span>
+                <span id="stat-pop" class="code-font text-xl font-bold text-emerald-400 neon-text-green">0</span>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div class="flex flex-col items-end">
+                <span class="text-[10px] uppercase tracking-widest text-slate-400">FPS / Target</span>
+                <span id="stat-fps" class="code-font text-sm font-medium text-slate-300">0 / 10Hz</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN INTERACTIVE WORKSPACE -->
+    <main class="flex-1 relative flex overflow-hidden">
+        
+        <!-- LEFT CONTROL SIDEBAR (Playback, Speed, Seed Actions) -->
+        <div id="left-sidebar" class="absolute lg:relative top-4 bottom-4 left-4 lg:top-0 lg:bottom-0 lg:left-0 w-80 max-w-[calc(100vw-2rem)] flex flex-col gap-4 z-20 transition-transform duration-300 transform -translate-x-[110%] lg:translate-x-0">
+            <div class="flex-1 glass-panel lg:border-y-0 lg:border-r border-slate-800 p-5 flex flex-col overflow-y-auto gap-5 rounded-2xl lg:rounded-none">
+                
+                <!-- PLAYBACK CONTROLS -->
+                <div>
+                    <h3 class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-play text-emerald-400"></i> Simulation Controls
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-play" class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold transition-all shadow-lg shadow-emerald-500/10">
+                            <i id="play-icon" class="fa-solid fa-play"></i> <span id="play-text">Start</span>
+                        </button>
+                        <button id="btn-step" class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all border border-slate-700">
+                            <i class="fa-solid fa-forward-step text-emerald-400"></i> Step
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SPEED CONFIGURATION -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs uppercase tracking-widest text-slate-400 font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-gauge-high text-emerald-400"></i> Speed / Velocity
+                        </h3>
+                        <span id="speed-label" class="code-font text-xs text-emerald-400">10 Gen/Sec</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-slow" title="Slow Down" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-700 transition-all">
+                            <i class="fa-solid fa-minus"></i>
+                        </button>
+                        <input id="slider-speed" type="range" min="1" max="60" value="10" class="flex-1 accent-emerald-500 bg-slate-800 h-2 rounded-lg appearance-none cursor-pointer">
+                        <button id="btn-fast" title="Speed Up" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-700 transition-all">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BOARD VIEW MODIFICATION -->
+                <div>
+                    <h3 class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass-plus text-emerald-400"></i> View Options
+                    </h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="btn-zoom-in" title="Zoom In" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all text-sm flex flex-col items-center justify-center gap-1">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            <span class="text-[10px]">In</span>
+                        </button>
+                        <button id="btn-zoom-out" title="Zoom Out" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all text-sm flex flex-col items-center justify-center gap-1">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                            <span class="text-[10px]">Out</span>
+                        </button>
+                        <button id="btn-center" title="Recenter Camera" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all text-sm flex flex-col items-center justify-center gap-1">
+                            <i class="fa-solid fa-crosshairs"></i>
+                            <span class="text-[10px]">Center</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- INITIALIZATION STATE -->
+                <div>
+                    <h3 class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-seedling text-emerald-400"></i> Seed Controls
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-random" class="py-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/30 border border-emerald-800/60 text-emerald-300 font-medium transition-all text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-dice"></i> Randomize
+                        </button>
+                        <button id="btn-clear" class="py-2.5 rounded-xl bg-rose-950/20 hover:bg-rose-900/20 border border-rose-900/50 text-rose-400 font-medium transition-all text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-trash-can"></i> Clear Board
+                        </button>
+                    </div>
+                </div>
+
+                <!-- THEORY EXPLAINER CARD -->
+                <div class="bg-slate-950/80 border border-emerald-900/30 rounded-xl p-4 text-xs space-y-2 mt-auto">
+                    <p class="font-bold text-emerald-400 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-info"></i> Ribbon Still-Life Theory:
+                    </p>
+                    <p class="text-slate-300 leading-relaxed text-[11px]">
+                        Two parallel diagonal lines placed directly adjacent to each other form an eternally stable <strong class="text-emerald-300">Diagonal Ribbon</strong> still life under standard B3/S23 rules:
+                    </p>
+                    <ul class="list-disc list-inside text-slate-400 text-[10px] space-y-1">
+                        <li>Every internal cell has exactly <strong class="text-slate-200">3 neighbors</strong> (2 in its own line, 1 in the adjacent line), securing survival.</li>
+                        <li>Tip/end cells have exactly <strong class="text-slate-200">2 neighbors</strong>, preventing the chain from shrinking.</li>
+                        <li>Inner pockets touch exactly <strong class="text-slate-200">4 neighbors</strong>, which prevents new births from destabilizing the structure.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- CENTER INFINITE CANVAS VIEWPORT -->
+        <div class="flex-1 h-full relative flex flex-col bg-[#020408]">
+            <!-- Side Drawer Mobile Triggers -->
+            <div class="absolute top-4 left-4 z-30 lg:hidden flex gap-2">
+                <button id="btn-toggle-left" class="w-10 h-10 rounded-xl bg-slate-900/95 border border-slate-700 text-emerald-400 flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <button id="btn-toggle-right" class="w-10 h-10 rounded-xl bg-slate-900/95 border border-slate-700 text-emerald-400 flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-shapes"></i>
+                </button>
+            </div>
+
+            <!-- Ghost Preview Floating Banner Alert -->
+            <div id="placement-banner" class="hidden absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-emerald-950/90 border border-emerald-500/80 px-4 py-2 rounded-full shadow-lg shadow-emerald-950/50 flex items-center gap-3">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <p class="text-xs text-emerald-200">
+                    Active Blueprint: <strong id="stamp-pattern-name" class="text-white">Double-Diagonal Ribbon</strong>
+                </p>
+                <button id="btn-cancel-placement" class="text-[10px] bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded border border-emerald-700 transition-all">
+                    Cancel (ESC)
+                </button>
+            </div>
+
+            <!-- THE CANVAS -->
+            <canvas id="game-canvas" class="w-full h-full cursor-crosshair block"></canvas>
+        </div>
+
+        <!-- RIGHT SIDEBAR (Procedural Studio & Custom Storage) -->
+        <div id="right-sidebar" class="absolute lg:relative top-4 bottom-4 right-4 lg:top-0 lg:bottom-0 lg:right-0 w-80 max-w-[calc(100vw-2rem)] flex flex-col gap-4 z-20 transition-transform duration-300 transform translate-x-[110%] lg:translate-x-0">
+            <div class="flex-1 glass-panel lg:border-y-0 lg:border-l border-slate-800 p-5 flex flex-col overflow-y-auto gap-5 rounded-2xl lg:rounded-none">
+                
+                <!-- PROCEDURAL DIAGONAL STUDIO -->
+                <div class="space-y-4 bg-slate-950/60 p-4 rounded-xl border border-emerald-950/50">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs uppercase tracking-widest text-slate-400 font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-shapes text-emerald-400"></i> Diagonal Studio
+                        </h3>
+                        <span class="text-[9px] bg-emerald-950 border border-emerald-800 text-emerald-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">Procedural</span>
+                    </div>
+                    
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        Design an eternally stable Still-Life ribbon made of two adjacent parallel diagonal lines.
+                    </p>
+                    
+                    <!-- Chain Length Slider -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Ribbon Length (X)</label>
+                            <span id="diagonal-length-label" class="code-font text-xs text-emerald-400 font-bold">12</span>
+                        </div>
+                        <input id="slider-diagonal-length" type="range" min="1" max="40" value="12" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <!-- Direction Options -->
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 font-semibold">Diagonal Path</label>
+                        <div class="grid grid-cols-3 gap-1">
+                            <button id="btn-diag-ltr" class="py-1.5 rounded-lg bg-emerald-500 text-slate-900 font-bold text-[10px] border border-transparent transition-all">Down-R (\)</button>
+                            <button id="btn-diag-rtl" class="py-1.5 rounded-lg bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] border border-slate-800 transition-all">Up-R (/)</button>
+                            <button id="btn-diag-both" class="py-1.5 rounded-lg bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] border border-slate-800 transition-all">Cross (X)</button>
+                        </div>
+                    </div>
+
+                    <!-- Load Action -->
+                    <button id="btn-activate-diagonal" class="w-full py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 hover:text-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-stamp"></i> Load Ribbon Blueprint
+                    </button>
+                </div>
+
+                <!-- BLUEPRINT PERSISTENCE STORAGE -->
+                <div class="flex-1 flex flex-col min-h-[220px]">
+                    <div class="mb-3">
+                        <h3 class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-floppy-disk text-emerald-400"></i> Blueprint Cabinet
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Capture the currently active layout relative to center mass.</p>
+                    </div>
+
+                    <div class="space-y-3 bg-slate-950/60 p-4 rounded-xl border border-slate-800 mb-4">
+                        <div>
+                            <label class="block text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 font-semibold">Blueprint Name</label>
+                            <input id="input-pattern-name" type="text" placeholder="e.g., Stable Diagonal Loop" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                        </div>
+                        <button id="btn-save-pattern" class="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/5">
+                            <i class="fa-solid fa-download"></i> Save Grid State
+                        </button>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold flex items-center gap-1.5">
+                            <i class="fa-solid fa-box-open text-emerald-400"></i> My Blueprints
+                        </span>
+                        <span id="saved-count" class="code-font text-[10px] text-slate-400 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">0</span>
+                    </div>
+
+                    <!-- SCROLL CONTAINER FOR PERSISTED CUSTOM PATTERNS -->
+                    <div id="saved-patterns-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                        <!-- Custom saved blueprints appear dynamically here -->
+                        <div id="empty-saved-state" class="h-full flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-800 rounded-xl bg-slate-950/20">
+                            <i class="fa-solid fa-folder-open text-slate-600 text-xl mb-2"></i>
+                            <p class="text-xs text-slate-400 font-medium">No custom blueprints</p>
+                            <p class="text-[9px] text-slate-500 mt-1 max-w-[180px]">Build/Toggle a design and save it dynamically to LocalStorage!</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER / SHORTCUTS HELPER -->
+    <footer class="glass-panel border-t border-slate-800/80 px-6 py-3 flex justify-between items-center text-xs text-slate-400 z-10">
+        <div class="flex items-center space-x-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 neon-glow-green animate-pulse"></span>
+            <p>Deployable index.html • Ready for GitHub Pages</p>
+        </div>
+        <p class="text-[10px] text-slate-500 hidden md:block">Press <kbd class="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-300 font-bold">Space</kbd> to pause • <kbd class="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-300 font-bold">ESC</kbd> to clear stamp</p>
+    </footer>
+
+    <!-- SCRIPT AND ENGINE LOGIC -->
+    <script>
+        // Core Infinite Coordinates State Map
+        let aliveCells = new Set(); // Stores infinite virtual coordinates mapped as "x,y" string keys
+        let isRunning = false;
+        let updateInterval = 100; // ms per frame step
+        let generation = 0;
+        
+        // Navigation View Zoom Variables
+        const BASE_CELL_SIZE = 20;
+        let zoom = 1.0; 
+        let offsetX = 0; 
+        let offsetY = 0;
+        
+        // Interaction dragging variables
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let totalDragDistance = 0;
+        let dragStartTime = 0;
+
+        // Custom blueprint stamp active parameters
+        let placementMode = false;
+        let currentPlacementPattern = null;
+        let currentPlacementName = "";
+        let hoverGridX = 0;
+        let hoverGridY = 0;
+
+        // FPS analytics telemetry
+        let frameTimes = [];
+        let actualFPS = 0;
+        let lastStepTimestamp = 0;
+
+        /**
+         * Procedural Parallel Diagonal Line Generator
+         * Generates two parallel diagonal lines running next to each other
+         * which creates an eternally stable Conway Still Life.
+         */
+        function generateParallelDiagonalLines(length, direction) {
+            const points = [];
+            
+            // Generate Down-Right (\) parallel lines
+            if (direction === 'ltr' || direction === 'both') {
+                for (let i = 0; i < length; i++) {
+                    // Line 1
+                    points.push({x: i, y: i + 1});
+                    // Line 2 (adjacent parallel)
+                    points.push({x: i + 1, y: i});
+                }
+            }
+            
+            // Generate Up-Right (/) parallel lines
+            if (direction === 'rtl' || direction === 'both') {
+                for (let i = 0; i < length; i++) {
+                    // Line 1
+                    points.push({x: i, y: -i - 1});
+                    // Line 2 (adjacent parallel)
+                    points.push({x: i + 1, y: -i});
+                }
+            }
+
+            // De-duplicate points falling on overlapping boundaries (mostly for Cross mode)
+            const uniquePoints = [];
+            const seen = new Set();
+            for (let p of points) {
+                const key = `${p.x},${p.y}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniquePoints.push(p);
+                }
+            }
+
+            // Align all coordinates symmetrically on center-of-mass relative origin
+            if (uniquePoints.length > 0) {
+                let sumX = 0, sumY = 0;
+                for (let p of uniquePoints) {
+                    sumX += p.x;
+                    sumY += p.y;
+                }
+                const avgX = Math.round(sumX / uniquePoints.length);
+                const avgY = Math.round(sumY / uniquePoints.length);
+                return uniquePoints.map(p => ({
+                    x: p.x - avgX,
+                    y: p.y - avgY
+                }));
+            }
+            return [];
+        }
+
+        // Initialize Web GL Context or 2D Canvas Fallbacks
+        const canvas = document.getElementById("game-canvas");
+        const ctx = canvas.getContext("2d");
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            draw();
+        }
+        window.addEventListener("resize", resizeCanvas);
+
+        // Simulation core evaluations (B3/S23 Classic rules)
+        function stepSimulation() {
+            const neighborCount = new Map();
+
+            // Distribute neighbor increment indexes around active alive coords
+            for (let cell of aliveCells) {
+                const [x, y] = cell.split(',').map(Number);
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const key = `${x + dx},${y + dy}`;
+                        neighborCount.set(key, (neighborCount.get(key) || 0) + 1);
+                    }
+                }
+            }
+
+            const nextAlive = new Set();
+
+            // Rule Evaluation: Survives (Live cell with 2 or 3 neighbors)
+            for (let cell of aliveCells) {
+                const count = neighborCount.get(cell) || 0;
+                if (count === 2 || count === 3) {
+                    nextAlive.add(cell);
+                }
+            }
+
+            // Rule Evaluation: Births (Dead cell with exactly 3 neighbors)
+            for (let [cell, count] of neighborCount.entries()) {
+                if (count === 3 && !aliveCells.has(cell)) {
+                    nextAlive.add(cell);
+                }
+            }
+
+            aliveCells = nextAlive;
+            generation++;
+            updateStatsUI();
+        }
+
+        // Randomize active coordinate population on viewport
+        function randomize() {
+            clearBoard();
+            const cellW = BASE_CELL_SIZE * zoom;
+            
+            const minX = Math.floor(-offsetX / cellW) - 10;
+            const maxX = Math.ceil((canvas.width - offsetX) / cellW) + 10;
+            const minY = Math.floor(-offsetY / cellW) - 10;
+            const maxY = Math.ceil((canvas.height - offsetY) / cellW) + 10;
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    if (Math.random() > 0.78) {
+                        aliveCells.add(`${x},${y}`);
+                    }
+                }
+            }
+            updateStatsUI();
+            draw();
+        }
+
+        function clearBoard() {
+            aliveCells.clear();
+            generation = 0;
+            updateStatsUI();
+            draw();
+        }
+
+        function recenter() {
+            offsetX = canvas.width / 2;
+            offsetY = canvas.height / 2;
+            draw();
+        }
+
+        // Premium Rendering Cycle (Cyber Hacker glow aesthetic)
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cellW = BASE_CELL_SIZE * zoom;
+
+            // Draw grid guidelines if zoom scale is large enough to stay readable
+            if (zoom >= 0.4) {
+                ctx.strokeStyle = "rgba(30, 41, 59, 0.4)";
+                ctx.lineWidth = 1;
+
+                const startX = offsetX % cellW;
+                const startY = offsetY % cellW;
+
+                ctx.beginPath();
+                // Vertical grid lines
+                for (let x = startX; x < canvas.width; x += cellW) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                }
+                // Horizontal grid lines
+                for (let y = startY; y < canvas.height; y += cellW) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                }
+                ctx.stroke();
+
+                // Axis reference guides (Coordinates origin indicator)
+                ctx.strokeStyle = "rgba(16, 185, 129, 0.12)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                if (offsetX >= 0 && offsetX <= canvas.width) {
+                    ctx.moveTo(offsetX, 0);
+                    ctx.lineTo(offsetX, canvas.height);
+                }
+                if (offsetY >= 0 && offsetY <= canvas.height) {
+                    ctx.moveTo(0, offsetY);
+                    ctx.lineTo(canvas.width, offsetY);
+                }
+                ctx.stroke();
+            }
+
+            // Draw Glowing Alive Cells (Deep Premium Emerald Green)
+            ctx.save();
+            if (aliveCells.size < 600 && zoom > 0.35) {
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = "#10b981";
+            }
+            ctx.fillStyle = "#34d399";
+
+            for (let cell of aliveCells) {
+                const [x, y] = cell.split(',').map(Number);
+                const sX = x * cellW + offsetX;
+                const sY = y * cellW + offsetY;
+
+                // Viewport clipping coordinates optimization
+                if (sX + cellW >= 0 && sX <= canvas.width && sY + cellW >= 0 && sY <= canvas.height) {
+                    if (zoom > 0.45) {
+                        ctx.beginPath();
+                        ctx.roundRect(sX + 1, sY + 1, cellW - 2, cellW - 2, Math.max(1.5, 2.5 * zoom));
+                        ctx.fill();
+                    } else {
+                        ctx.fillRect(sX, sY, cellW, cellW);
+                    }
+                }
+            }
+            ctx.restore();
+
+            // Hover Ghost Stamp Blueprint Preview
+            if (placementMode && currentPlacementPattern) {
+                ctx.fillStyle = "rgba(16, 185, 129, 0.35)";
+                ctx.strokeStyle = "rgba(52, 211, 153, 0.8)";
+                ctx.lineWidth = 1.5;
+
+                for (let pt of currentPlacementPattern) {
+                    const targetX = hoverGridX + pt.x;
+                    const targetY = hoverGridY + pt.y;
+                    const sX = targetX * cellW + offsetX;
+                    const sY = targetY * cellW + offsetY;
+
+                    if (sX + cellW >= 0 && sX <= canvas.width && sY + cellW >= 0 && sY <= canvas.height) {
+                        ctx.beginPath();
+                        ctx.roundRect(sX + 1, sY + 1, cellW - 2, cellW - 2, Math.max(1, 2 * zoom));
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // Screen-space to grid conversion helper
+        function screenToGrid(sX, sY) {
+            const cellW = BASE_CELL_SIZE * zoom;
+            return {
+                x: Math.floor((sX - offsetX) / cellW),
+                y: Math.floor((sY - offsetY) / cellW)
+            };
+        }
+
+        // Cursor mouse interaction registrations
+        canvas.addEventListener("mousedown", (e) => {
+            if (e.button === 2) {
+                cancelPlacement();
+                e.preventDefault();
+                return;
+            }
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            totalDragDistance = 0;
+            dragStartTime = Date.now();
+        });
+
+        canvas.addEventListener("mousemove", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const sX = e.clientX - rect.left;
+            const sY = e.clientY - rect.top;
+
+            const gridPos = screenToGrid(sX, sY);
+            hoverGridX = gridPos.x;
+            hoverGridY = gridPos.y;
+
+            if (isDragging) {
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                offsetX += dx;
+                offsetY += dy;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                totalDragDistance += Math.hypot(dx, dy);
+                draw();
+            } else if (placementMode) {
+                draw();
+            }
+        });
+
+        window.addEventListener("mouseup", (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const elapsed = Date.now() - dragStartTime;
+            if (totalDragDistance < 6 && elapsed < 320) {
+                const rect = canvas.getBoundingClientRect();
+                const sX = e.clientX - rect.left;
+                const sY = e.clientY - rect.top;
+                handleViewportInteraction(sX, sY);
+            }
+        });
+
+        // Touch support gestures for mobile devices
+        canvas.addEventListener("touchstart", (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+                totalDragDistance = 0;
+                dragStartTime = Date.now();
+            }
+        });
+
+        canvas.addEventListener("touchmove", (e) => {
+            if (isDragging && e.touches.length === 1) {
+                const rect = canvas.getBoundingClientRect();
+                const sX = e.touches[0].clientX - rect.left;
+                const sY = e.touches[0].clientY - rect.top;
+
+                const gridPos = screenToGrid(sX, sY);
+                hoverGridX = gridPos.x;
+                hoverGridY = gridPos.y;
+
+                const dx = e.touches[0].clientX - lastMouseX;
+                const dy = e.touches[0].clientY - lastMouseY;
+                offsetX += dx;
+                offsetY += dy;
+                lastMouseX = e.touches[0].clientX;
+                lastMouseY = e.touches[0].clientY;
+                totalDragDistance += Math.hypot(dx, dy);
+                draw();
+            }
+        });
+
+        canvas.addEventListener("touchend", (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+
+            const elapsed = Date.now() - dragStartTime;
+            if (totalDragDistance < 6 && elapsed < 320) {
+                const rect = canvas.getBoundingClientRect();
+                const sX = lastMouseX - rect.left;
+                const sY = lastMouseY - rect.top;
+                handleViewportInteraction(sX, sY);
+            }
+        });
+
+        canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+        function handleViewportInteraction(screenX, screenY) {
+            const gridPos = screenToGrid(screenX, screenY);
+            const key = `${gridPos.x},${gridPos.y}`;
+
+            if (placementMode && currentPlacementPattern) {
+                // Place Stamp onto canvas
+                for (let pt of currentPlacementPattern) {
+                    aliveCells.add(`${gridPos.x + pt.x},${gridPos.y + pt.y}`);
+                }
+                updateStatsUI();
+                draw();
+            } else {
+                // Toggle active coordinate state
+                if (aliveCells.has(key)) {
+                    aliveCells.delete(key);
+                } else {
+                    aliveCells.add(key);
+                }
+                updateStatsUI();
+                draw();
+            }
+        }
+
+        // LocalStorage user pattern configurations
+        function savePattern() {
+            const nameInput = document.getElementById("input-pattern-name");
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showToast("Please enter a blueprint name first.", "error");
+                return;
+            }
+
+            if (aliveCells.size === 0) {
+                showToast("Grid is empty! Create something on the field before saving.", "warning");
+                return;
+            }
+
+            // Normalize relative offsets to center of mass
+            let sumX = 0, sumY = 0;
+            const points = [];
+
+            for (let cell of aliveCells) {
+                const [cx, cy] = cell.split(',').map(Number);
+                sumX += cx;
+                sumY += cy;
+                points.push({x: cx, y: cy});
+            }
+
+            const avgX = Math.round(sumX / aliveCells.size);
+            const avgY = Math.round(sumY / aliveCells.size);
+
+            const relativePattern = points.map(pt => ({
+                x: pt.x - avgX,
+                y: pt.y - avgY
+            }));
+
+            const patternsStore = getSavedPatterns();
+            patternsStore[name] = relativePattern;
+            localStorage.setItem("conways_life_still_lives", JSON.stringify(patternsStore));
+
+            nameInput.value = "";
+            showToast(`"${name}" blueprint saved successfully!`, "success");
+            loadCustomPatternsUI();
+        }
+
+        function getSavedPatterns() {
+            try {
+                const stored = localStorage.getItem("conways_life_still_lives");
+                return stored ? JSON.parse(stored) : {};
+            } catch (e) {
+                console.error("Error reading saved blueprints:", e);
+                return {};
+            }
+        }
+
+        function deletePattern(name) {
+            const patternsStore = getSavedPatterns();
+            if (patternsStore[name]) {
+                delete patternsStore[name];
+                localStorage.setItem("conways_life_still_lives", JSON.stringify(patternsStore));
+                showToast(`Blueprint "${name}" deleted.`, "info");
+                loadCustomPatternsUI();
+            }
+        }
+
+        function enterPlacementMode(patternCoords, name) {
+            placementMode = true;
+            currentPlacementPattern = patternCoords;
+            currentPlacementName = name;
+
+            document.getElementById("stamp-pattern-name").textContent = name;
+            document.getElementById("placement-banner").classList.remove("hidden");
+            draw();
+        }
+
+        function cancelPlacement() {
+            placementMode = false;
+            currentPlacementPattern = null;
+            currentPlacementName = "";
+            document.getElementById("placement-banner").classList.add("hidden");
+            draw();
+        }
+
+        function initDiagonalStudio() {
+            const sliderDiagLength = document.getElementById("slider-diagonal-length");
+            const diagLengthLabel = document.getElementById("diagonal-length-label");
+            const btnDiagLtr = document.getElementById("btn-diag-ltr");
+            const btnDiagRtl = document.getElementById("btn-diag-rtl");
+            const btnDiagBoth = document.getElementById("btn-diag-both");
+            
+            const btnActivateDiag = document.getElementById("btn-activate-diagonal");
+
+            let diagonalLength = 12;
+            let diagonalMode = 'ltr'; // 'ltr', 'rtl', or 'both'
+
+            sliderDiagLength.addEventListener("input", (e) => {
+                diagonalLength = parseInt(e.target.value);
+                diagLengthLabel.textContent = diagonalLength;
+            });
+
+            function setDiagonalMode(mode) {
+                diagonalMode = mode;
+                [btnDiagLtr, btnDiagRtl, btnDiagBoth].forEach(btn => {
+                    btn.className = "py-1.5 rounded-lg bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 text-[10px] border border-slate-800 transition-all";
+                });
+
+                let activeBtn;
+                if (mode === 'ltr') activeBtn = btnDiagLtr;
+                else if (mode === 'rtl') activeBtn = btnDiagRtl;
+                else activeBtn = btnDiagBoth;
+
+                activeBtn.className = "py-1.5 rounded-lg bg-emerald-500 text-slate-900 font-bold text-[10px] border border-transparent transition-all";
+            }
+
+            btnDiagLtr.addEventListener("click", () => setDiagonalMode('ltr'));
+            btnDiagRtl.addEventListener("click", () => setDiagonalMode('rtl'));
+            btnDiagBoth.addEventListener("click", () => setDiagonalMode('both'));
+
+            btnActivateDiag.addEventListener("click", () => {
+                const pattern = generateParallelDiagonalLines(diagonalLength, diagonalMode);
+                
+                let modeLabel = (diagonalMode === 'both') ? "Cross" : (diagonalMode === 'ltr' ? "Down-R" : "Up-R");
+                let name = `Parallel Ribbon (${modeLabel} x${diagonalLength})`;
+                
+                enterPlacementMode(pattern, name);
+                showToast(`Loaded Double-Diagonal Ribbon! Click anywhere on canvas to stamp.`, "info");
+            });
+        }
+
+        function loadCustomPatternsUI() {
+            const container = document.getElementById("saved-patterns-list");
+            const countLabel = document.getElementById("saved-count");
+            const emptyState = document.getElementById("empty-saved-state");
+            
+            const items = container.querySelectorAll(".custom-pattern-item");
+            items.forEach(el => el.remove());
+
+            const list = getSavedPatterns();
+            const keys = Object.keys(list);
+            countLabel.textContent = keys.length;
+
+            if (keys.length === 0) {
+                emptyState.classList.remove("hidden");
+                return;
+            } else {
+                emptyState.classList.add("hidden");
+            }
+
+            for (let name of keys) {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "custom-pattern-item flex items-center gap-1 w-full";
+                itemDiv.innerHTML = `
+                    <button class="flex-1 py-2 px-3 text-left rounded-xl bg-emerald-950/20 hover:bg-emerald-900/10 border border-emerald-950 text-emerald-300 hover:text-emerald-200 transition-all text-xs flex items-center justify-between group overflow-hidden">
+                        <span class="truncate flex items-center gap-2 font-medium">
+                            <i class="fa-solid fa-bookmark text-emerald-400 text-[10px]"></i> ${name}
+                        </span>
+                        <span class="text-[9px] text-slate-500 shrink-0 ml-1">${list[name].length} pts</span>
+                    </button>
+                    <button title="Delete Blueprint" class="btn-delete w-8 h-8 rounded-xl bg-slate-900 hover:bg-rose-950/40 text-slate-500 hover:text-rose-400 border border-slate-800 hover:border-rose-900 flex items-center justify-center transition-all shrink-0">
+                        <i class="fa-regular fa-trash-can text-[10px]"></i>
+                    </button>
+                `;
+
+                // Handle load and delete actions on custom patterns
+                itemDiv.querySelector("button:first-child").addEventListener("click", () => {
+                    enterPlacementMode(list[name], name);
+                });
+                itemDiv.querySelector(".btn-delete").addEventListener("click", () => {
+                    deletePattern(name);
+                });
+
+                container.appendChild(itemDiv);
+            }
+        }
+
+        function updateStatsUI() {
+            document.getElementById("stat-gen").textContent = generation;
+            document.getElementById("stat-pop").textContent = aliveCells.size;
+        }
+
+        // FPS / Analytics real-time rendering loop
+        let lastFrameTime = performance.now();
+        function loop(timestamp) {
+            const delta = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+            frameTimes.push(1000 / delta);
+            if (frameTimes.length > 30) frameTimes.shift();
+            actualFPS = Math.round(frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length);
+
+            if (isRunning && timestamp - lastStepTimestamp > updateInterval) {
+                stepSimulation();
+                lastStepTimestamp = timestamp;
+            }
+
+            document.getElementById("stat-fps").textContent = `${actualFPS} / ${Math.round(1000/updateInterval)}Hz`;
+            requestAnimationFrame(loop);
+        }
+
+        // Play Pause Controller Actions
+        const btnPlay = document.getElementById("btn-play");
+        const playIcon = document.getElementById("play-icon");
+        const playText = document.getElementById("play-text");
+
+        function setRunning(run) {
+            isRunning = run;
+            if (isRunning) {
+                playIcon.className = "fa-solid fa-pause";
+                playText.textContent = "Pause";
+                btnPlay.classList.replace("bg-emerald-500", "bg-slate-700");
+                btnPlay.classList.replace("text-slate-900", "text-white");
+                btnPlay.classList.replace("hover:bg-emerald-400", "hover:bg-slate-600");
+            } else {
+                playIcon.className = "fa-solid fa-play";
+                playText.textContent = "Start";
+                btnPlay.classList.replace("bg-slate-700", "bg-emerald-500");
+                btnPlay.classList.replace("text-white", "text-slate-900");
+                btnPlay.classList.replace("hover:bg-slate-600", "hover:bg-emerald-400");
+            }
+        }
+
+        btnPlay.addEventListener("click", () => setRunning(!isRunning));
+        document.getElementById("btn-step").addEventListener("click", () => {
+            setRunning(false);
+            stepSimulation();
+            draw();
+        });
+
+        // Speed settings slider
+        const sliderSpeed = document.getElementById("slider-speed");
+        const speedLabel = document.getElementById("speed-label");
+
+        function setSpeed(hz) {
+            hz = Math.min(Math.max(Number(hz), 1), 60);
+            sliderSpeed.value = hz;
+            updateInterval = 1000 / hz;
+            speedLabel.textContent = `${hz} Gen/Sec`;
+        }
+
+        sliderSpeed.addEventListener("input", (e) => setSpeed(e.target.value));
+        document.getElementById("btn-slow").addEventListener("click", () => setSpeed(Math.round(1000 / updateInterval) - 1));
+        document.getElementById("btn-fast").addEventListener("click", () => setSpeed(Math.round(1000 / updateInterval) + 1));
+
+        // View adjustments zoom factor
+        function adjustZoom(amount) {
+            const zoomIn = amount > 0;
+            const factor = zoomIn ? 1.25 : 0.8;
+            
+            const prevZoom = zoom;
+            zoom = Math.min(Math.max(zoom * factor, 0.15), 5.0);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            offsetX = centerX - (centerX - offsetX) * (zoom / prevZoom);
+            offsetY = centerY - (centerY - offsetY) * (zoom / prevZoom);
+
+            draw();
+        }
+
+        document.getElementById("btn-zoom-in").addEventListener("click", () => adjustZoom(1));
+        document.getElementById("btn-zoom-out").addEventListener("click", () => adjustZoom(-1));
+        document.getElementById("btn-center").addEventListener("click", recenter);
+
+        document.getElementById("btn-random").addEventListener("click", randomize);
+        document.getElementById("btn-clear").addEventListener("click", clearBoard);
+        document.getElementById("btn-save-pattern").addEventListener("click", savePattern);
+        document.getElementById("btn-cancel-placement").addEventListener("click", cancelPlacement);
+
+        // Sidebar responsive viewport drawer buttons
+        const leftSidebar = document.getElementById("left-sidebar");
+        const rightSidebar = document.getElementById("right-sidebar");
+
+        document.getElementById("btn-toggle-left").addEventListener("click", () => {
+            leftSidebar.classList.toggle("-translate-x-[110%]");
+            rightSidebar.classList.add("translate-x-[110%]");
+        });
+
+        document.getElementById("btn-toggle-right").addEventListener("click", () => {
+            rightSidebar.classList.toggle("translate-x-[110%]");
+            leftSidebar.classList.add("-translate-x-[110%]");
+        });
+
+        // Keyboard Shortcuts Override map
+        window.addEventListener("keydown", (e) => {
+            if (document.activeElement.tagName === "INPUT") return;
+            
+            switch(e.code) {
+                case "Space":
+                    e.preventDefault();
+                    setRunning(!isRunning);
+                    break;
+                case "KeyS":
+                    setRunning(false);
+                    stepSimulation();
+                    draw();
+                    break;
+                case "KeyC":
+                    clearBoard();
+                    break;
+                case "KeyR":
+                    randomize();
+                    break;
+                case "Equal":
+                case "NumpadAdd":
+                    adjustZoom(1);
+                    break;
+                case "Minus":
+                case "NumpadSubtract":
+                    adjustZoom(-1);
+                    break;
+                case "Escape":
+                    cancelPlacement();
+                    break;
+            }
+        });
+
+        // Toast Notification System
+        function showToast(message, type = "success") {
+            const toast = document.createElement("div");
+            toast.className = `fixed bottom-20 left-1/2 transform -translate-x-1/2 px-4 py-2.5 rounded-xl border z-50 shadow-xl transition-all duration-300 opacity-0 translate-y-2 text-xs flex items-center gap-2`;
+            
+            let icon = '<i class="fa-solid fa-circle-check"></i>';
+            if (type === "success") {
+                toast.className += " bg-emerald-950 text-emerald-300 border-emerald-800/80";
+            } else if (type === "error") {
+                toast.className += " bg-rose-950 text-rose-300 border-rose-800/80";
+                icon = '<i class="fa-solid fa-circle-xmark"></i>';
+            } else if (type === "warning") {
+                toast.className += " bg-amber-950 text-amber-300 border-amber-800/80";
+                icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else {
+                toast.className += " bg-slate-900 text-slate-200 border-slate-800";
+                icon = '<i class="fa-solid fa-circle-info text-emerald-400"></i>';
+            }
+
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.replace("opacity-0", "opacity-100");
+                toast.classList.replace("translate-y-2", "translate-y-0");
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.replace("opacity-100", "opacity-0");
+                toast.classList.replace("translate-y-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // Launch Sequence
+        window.onload = function () {
+            resizeCanvas();
+            recenter();
+            initDiagonalStudio();
+            loadCustomPatternsUI();
+            
+            // Seed a starting parallel diagonal ribbon on first load
+            const startPattern = generateParallelDiagonalLines(15, 'ltr');
+            for (let pt of startPattern) {
+                aliveCells.add(`${pt.x},${pt.y}`);
+            }
+            updateStatsUI();
+            draw();
+
+            requestAnimationFrame(loop);
+        }
+
+    </script>
+</body>
+</html>
